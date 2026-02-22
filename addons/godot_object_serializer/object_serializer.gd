@@ -74,6 +74,22 @@ static func _get_entry(name: StringName = "", script: Script = null) -> _ScriptR
 					return entry
 
 	return null
+	
+	
+static func _get_class_properties(instance: Variant) -> Array[String]:
+	var results: Array[String] = []
+	
+	if not instance.has_method(&"get_property_list"):
+		assert(false, "Invalid instance")
+		return results
+		
+	for property: Dictionary in instance.get_property_list():
+		results.append(property.name)
+	
+	# get_property_list() returns 3 first elements as infomation of the scripts
+	# they're redundant in this case, eg:
+	# ["RefCounted", "script", "recruit_data.gd", "unit_id", "title", "reroll_count"]
+	return results.slice(3)
 
 
 class _ScriptRegistryEntry:
@@ -127,6 +143,8 @@ class _ScriptRegistryEntry:
 			instance = script_type.new.callv(value[ObjectSerializer.args_field])
 		else:
 			instance = script_type.new()
+			
+		var included_properties: Array[String] = ObjectSerializer._get_class_properties(instance)
 
 		var excluded_properties: Array[String] = []
 		if instance.has_method("_get_excluded_properties"):
@@ -140,6 +158,7 @@ class _ScriptRegistryEntry:
 			if (
 				key == ObjectSerializer.type_field
 				or key == ObjectSerializer.args_field
+				or not included_properties.has(key)
 				or excluded_properties.has(key)
 				or partial.has(key)
 			):
